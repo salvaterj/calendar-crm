@@ -4,7 +4,7 @@ import { Calendar, dateFnsLocalizer, EventProps, View, Views } from 'react-big-c
 import { ptBR } from 'date-fns/locale/pt-BR'
 import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter } from 'lucide-react'
 import { CalendarEvent, EventType } from '@/types/crm'
-import { resolveUserName } from '@/userMap'
+import { resolveUserName, USER_MAP } from '@/userMap'
 
 const locales = { 'pt-BR': ptBR }
 const localizer = dateFnsLocalizer({
@@ -78,6 +78,7 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   const [customEnd, setCustomEnd] = useState<Date | null>(null)
   const [customStartText, setCustomStartText] = useState('')
   const [customEndText, setCustomEndText] = useState('')
+  const [selectedResponsible, setSelectedResponsible] = useState<string>('')
   const [selectedTypes, setSelectedTypes] = useState<Record<EventType, boolean>>({
     dueDate: true,
     consultoria: true,
@@ -160,8 +161,12 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   }, [range, date, customStart, customEnd])
  
    const typeFiltered = useMemo(() => {
-     return events.filter(e => selectedTypes[e.type])
-   }, [events, selectedTypes])
+    return events.filter(e => {
+      const typeMatch = selectedTypes[e.type]
+      const responsibleMatch = !selectedResponsible || e.responsibleUserId === selectedResponsible
+      return typeMatch && responsibleMatch
+    })
+  }, [events, selectedTypes, selectedResponsible])
  
    const displayedEvents = useMemo(() => {
      return typeFiltered.filter(e => e.end > visibleStart && e.start < visibleEnd)
@@ -253,8 +258,34 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
                Limpar
              </button>
            </div>
-         )}
- 
+        )}
+
+        <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+           <UserCheck size={16} color="#64748b" />
+           <select
+             value={selectedResponsible}
+             onChange={(e) => setSelectedResponsible(e.target.value)}
+             style={{
+               padding: '6px 12px',
+               borderRadius: '6px',
+               border: '1px solid #cbd5e1',
+               fontSize: '14px',
+               outline: 'none',
+               color: '#334155',
+               maxWidth: '200px'
+             }}
+           >
+             <option value="">Todos os responsáveis</option>
+             {Object.entries(USER_MAP).map(([id, name]) => (
+               <option key={id} value={id}>{name}</option>
+             ))}
+           </select>
+        </div>
+
+        <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 14 }}>
             <Filter size={16} />
