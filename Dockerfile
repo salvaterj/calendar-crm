@@ -3,6 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Argumento de build para o token da API
+ARG VITE_API_TOKEN
+ENV VITE_API_TOKEN=$VITE_API_TOKEN
+
 # Copiar arquivos de dependência
 COPY package.json package-lock.json ./
 
