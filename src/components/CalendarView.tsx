@@ -181,8 +181,14 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
    }, [displayedEvents])
  
    useEffect(() => {
-     onStatsChange?.(stats)
-   }, [stats, onStatsChange])
+    onStatsChange?.(stats)
+  }, [stats, onStatsChange])
+
+  useEffect(() => {
+    if (range === 'custom' && customStart) {
+      setDate(customStart)
+    }
+  }, [range, customStart])
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -343,10 +349,15 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
       <div style={{ flex: 1 }}>
         <Calendar
           localizer={localizer}
-         events={typeFiltered}
+          events={typeFiltered}
           startAccessor="start"
           endAccessor="end"
-          components={{ event: EventCard }}
+          components={{ 
+            event: EventCard,
+            agenda: {
+              event: EventCard
+            }
+          }}
           style={{ height: 'calc(100vh - 140px)', border: 'none' }}
           views={['month', 'week', 'day', 'agenda']}
           culture="pt-BR"
