@@ -20,7 +20,15 @@ export type CRMItem = {
   metadata?: any
 }
 
-export type EventType = 'dueDate' | 'consultoria' | 'apresentacao'
+export type Panel = {
+  id: string
+  title: string
+  scope: string
+  userId?: string | null
+  description?: string | null
+}
+
+export type EventType = 'dueDate' | 'consultoria' | 'apresentacao' | 'tarefa'
 
 export type CalendarEvent = {
   id: string
@@ -31,4 +39,5 @@ export type CalendarEvent = {
   responsibleUserId?: string | null
   panelId?: string
   cardKey?: string | null
+  monetaryAmount?: number | null
 }

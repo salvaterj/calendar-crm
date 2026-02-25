@@ -2,7 +2,7 @@
 import { Calendar, dateFnsLocalizer, EventProps, View, Views } from 'react-big-calendar'
  import { format, parse, startOfWeek, getDay, addDays, startOfDay, endOfDay, startOfMonth, endOfMonth, differenceInCalendarDays, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter } from 'lucide-react'
+import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter, CheckSquare } from 'lucide-react'
 import { CalendarEvent, EventType } from '@/types/crm'
 import { resolveUserName, USER_MAP } from '@/userMap'
 
@@ -19,7 +19,8 @@ function eventStyleGetter(event: CalendarEvent) {
   const colors: Record<string, string> = {
     dueDate: '#f97316',
     consultoria: '#22c55e',
-    apresentacao: '#3b82f6'
+    apresentacao: '#3b82f6',
+    tarefa: '#a855f7'
   }
   return {
     style: {
@@ -36,10 +37,15 @@ function EventCard({ event }: EventProps<CalendarEvent>) {
   const icons: Record<EventType, React.ReactNode> = {
     dueDate: <Clock size={16} />,
     consultoria: <UserCheck size={16} />,
-    apresentacao: <MonitorPlay size={16} />
+    apresentacao: <MonitorPlay size={16} />,
+    tarefa: <CheckSquare size={16} />
   }
   const range = `${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`
   const who = resolveUserName(event.responsibleUserId)
+  const amount = event.monetaryAmount 
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(event.monetaryAmount)
+    : null
+
   return (
     <div className="event-card" style={{ display: 'grid', gridTemplateColumns: '16px 1fr', gap: 8, alignItems: 'start', padding: '6px 4px' }}>
       <div style={{ paddingTop: 2 }}>{icons[event.type]}</div>
@@ -49,10 +55,16 @@ function EventCard({ event }: EventProps<CalendarEvent>) {
           <span style={{ fontWeight: 600, fontSize: 12 }}>Responsável:</span>
           <span style={{ fontSize: 12 }}>{who}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: amount ? 4 : 0 }}>
           <span style={{ fontWeight: 600, fontSize: 12 }}>Horário:</span>
           <span style={{ fontSize: 12 }}>{range}</span>
         </div>
+        {amount && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: 12 }}>Valor:</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{amount}</span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -68,8 +80,8 @@ const formats = {
 
  type DateRange = 'today' | 'tomorrow' | 'week' | 'month' | 'custom'
 
- type Stats = { consultoria: number; apresentacao: number; validade: number; total: number }
- 
+ type Stats = { consultoria: number; apresentacao: number; validade: number; tarefa: number; total: number }
+
 export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[]; onStatsChange?: (s: Stats) => void }) {
   const [date, setDate] = useState(new Date())
   const [view, setView] = useState<View>(Views.WEEK)
@@ -82,7 +94,8 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   const [selectedTypes, setSelectedTypes] = useState<Record<EventType, boolean>>({
     dueDate: true,
     consultoria: true,
-    apresentacao: true
+    apresentacao: true,
+    tarefa: true
   })
   const [modalUrl, setModalUrl] = useState<string | null>(null)
 
@@ -176,8 +189,9 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
      const consultoria = displayedEvents.filter(e => e.type === 'consultoria').length
      const apresentacao = displayedEvents.filter(e => e.type === 'apresentacao').length
      const validade = displayedEvents.filter(e => e.type === 'dueDate').length
+     const tarefa = displayedEvents.filter(e => e.type === 'tarefa').length
      const total = displayedEvents.length
-     return { consultoria, apresentacao, validade, total }
+     return { consultoria, apresentacao, validade, tarefa, total }
    }, [displayedEvents])
  
    useEffect(() => {
@@ -322,9 +336,17 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
               />
               <span style={{ color: '#3b82f6', fontWeight: 500 }}>Apresentação</span>
             </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={selectedTypes.tarefa} 
+                onChange={() => toggleType('tarefa')}
+              />
+              <span style={{ color: '#a855f7', fontWeight: 500 }}>Tarefa</span>
+            </label>
           </div>
         </div>
- 
+
        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
          <span style={{ fontSize: 13, color: '#64748b' }}>Exibindo:</span>
          <span style={{ background: '#eafaf1', color: '#22c55e', border: '1px solid #b5e3c8', padding: '4px 8px', borderRadius: 999 }}>
@@ -335,6 +357,9 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
          </span>
          <span style={{ background: '#fff2e6', color: '#f97316', border: '1px solid #ffd4b2', padding: '4px 8px', borderRadius: 999 }}>
            {stats.validade} Validade
+         </span>
+         <span style={{ background: '#f3e8ff', color: '#a855f7', border: '1px solid #d8b4fe', padding: '4px 8px', borderRadius: 999 }}>
+           {stats.tarefa} Tarefas
          </span>
        </div>
       </div>
@@ -367,6 +392,7 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
           onNavigate={setDate}
           toolbar={false}
           onSelectEvent={(e: CalendarEvent) => {
+            console.log('Evento selecionado:', e)
             const url =
               e.panelId && e.cardKey
                 ? `https://crm.octanis.com.br/panels/${e.panelId}/card/${e.cardKey}`

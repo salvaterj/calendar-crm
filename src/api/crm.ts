@@ -1,9 +1,35 @@
 import axios from 'axios'
-import { CRMItem } from '@/types/crm'
+import { CRMItem, Panel } from '@/types/crm'
 
 const isDev = import.meta.env.DEV
 const BASE_URL = '/crm/v1'
 const TOKEN = import.meta.env.VITE_API_TOKEN
+
+export async function fetchPanels(): Promise<Panel[]> {
+  const pageSize = 100
+  const headers = { Authorization: TOKEN, accept: 'application/json' }
+  const items: Panel[] = []
+  let page = 1
+  while (true) {
+    const url = `${BASE_URL}/panel`
+    const params = {
+      PageSize: pageSize,
+      PageNumber: page
+    }
+    const res = await axios.get(url, { headers, params })
+    
+    if (res.status !== 200 || !res.data?.items) {
+      break
+    }
+    
+    const batch = res.data.items as Panel[]
+    items.push(...batch)
+    
+    if (batch.length < pageSize || !res.data.hasMorePages) break
+    page++
+  }
+  return items
+}
 
 export async function fetchCards(panelId: string): Promise<CRMItem[]> {
   const pageSize = 100

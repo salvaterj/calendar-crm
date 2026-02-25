@@ -12,25 +12,39 @@ function parseDate(value?: string | null) {
 
 export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
   const events: CalendarEvent[] = []
+  const mainPanelId = 'a04146a8-6cf1-4f88-8f97-d926292ec510'
+
   for (const it of items) {
+    const isMainPanel = it.panelId === mainPanelId
     const base = {
       title: it.title,
       responsibleUserId: it.responsibleUserId || null,
       panelId: it.panelId,
-      cardKey: it.key || null
+      cardKey: it.key || null,
+      monetaryAmount: it.monetaryAmount || null
     }
     const due = parseDate(it.dueDate || null)
     if (due) {
+      // Se for do painel principal, mantém como dueDate (validade)
+      // Se for de outro painel (USER), classifica como tarefa
+      // Mas se o painel USER for o principal (caso edge), mantém dueDate. 
+      // A lógica: isMainPanel -> dueDate, !isMainPanel -> tarefa
+      const type: EventType = isMainPanel ? 'dueDate' : 'tarefa'
+      
       events.push({
         id: `${it.id}-due`,
-        type: 'dueDate',
+        type,
         title: base.title,
         start: due,
         end: addMinutes(due, 90),
         responsibleUserId: base.responsibleUserId,
         panelId: base.panelId,
-        cardKey: base.cardKey
+        cardKey: base.cardKey,
+        monetaryAmount: base.monetaryAmount
       })
+      
+      // Se for tarefa (não principal), não processa consultoria/apresentação
+      if (!isMainPanel) continue
     }
     const consult = parseDate(
       Array.isArray(it.customFields?.['data-da-consultoria'])
@@ -46,7 +60,8 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         end: addMinutes(consult, 90),
         responsibleUserId: base.responsibleUserId,
         panelId: base.panelId,
-        cardKey: base.cardKey
+        cardKey: base.cardKey,
+        monetaryAmount: base.monetaryAmount
       })
     }
     const apresent = parseDate(
@@ -63,7 +78,8 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         end: addMinutes(apresent, 90),
         responsibleUserId: base.responsibleUserId,
         panelId: base.panelId,
-        cardKey: base.cardKey
+        cardKey: base.cardKey,
+        monetaryAmount: base.monetaryAmount
       })
     }
   }
