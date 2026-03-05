@@ -40,4 +40,5 @@ export type CalendarEvent = {
   panelId?: string
   cardKey?: string | null
   monetaryAmount?: number | null
+  isOnline?: boolean
 }

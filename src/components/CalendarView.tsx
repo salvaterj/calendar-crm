@@ -2,7 +2,7 @@
 import { Calendar, dateFnsLocalizer, EventProps, View, Views } from 'react-big-calendar'
  import { format, parse, startOfWeek, getDay, addDays, startOfDay, endOfDay, startOfMonth, endOfMonth, differenceInCalendarDays, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter, CheckSquare } from 'lucide-react'
+import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter, CheckSquare, Video, MapPin } from 'lucide-react'
 import { CalendarEvent, EventType } from '@/types/crm'
 import { resolveUserName, USER_MAP } from '@/userMap'
 
@@ -34,38 +34,125 @@ function eventStyleGetter(event: CalendarEvent) {
 }
 
 function EventCard({ event }: EventProps<CalendarEvent>) {
+  const [showTooltip, setShowTooltip] = useState(false)
+
   const icons: Record<EventType, React.ReactNode> = {
-    dueDate: <Clock size={16} />,
-    consultoria: <UserCheck size={16} />,
-    apresentacao: <MonitorPlay size={16} />,
-    tarefa: <CheckSquare size={16} />
+    dueDate: <Clock size={13} />,
+    consultoria: <UserCheck size={13} />,
+    apresentacao: <MonitorPlay size={13} />,
+    tarefa: <CheckSquare size={13} />
   }
   const range = `${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`
   const who = resolveUserName(event.responsibleUserId)
-  const amount = event.monetaryAmount 
-    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(event.monetaryAmount)
+  // Pega apenas o primeiro nome
+  const shortWho = who.split(' ')[0]
+  
+  const amountFormatted = event.monetaryAmount 
+    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(event.monetaryAmount)
+    : null
+
+  // Versão compacta do valor (ex: 1.2k)
+  const compactAmount = event.monetaryAmount
+    ? event.monetaryAmount >= 1000 
+      ? `R$ ${(event.monetaryAmount / 1000).toFixed(1)}k`
+      : `R$ ${event.monetaryAmount}`
     : null
 
   return (
-    <div className="event-card" style={{ display: 'grid', gridTemplateColumns: '16px 1fr', gap: 8, alignItems: 'start', padding: '6px 4px' }}>
-      <div style={{ paddingTop: 2 }}>{icons[event.type]}</div>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.4, marginBottom: 6 }}>{event.title}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 12 }}>Responsável:</span>
-          <span style={{ fontSize: 12 }}>{who}</span>
+    <div 
+      className="event-card" 
+      style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* CARD CLEAN: Ícone + Título + Responsável + Status Online */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+        {/* Ícone do Tipo */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          {icons[event.type]}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: amount ? 4 : 0 }}>
-          <span style={{ fontWeight: 600, fontSize: 12 }}>Horário:</span>
-          <span style={{ fontSize: 12 }}>{range}</span>
+
+        {/* Título Principal (Truncado) */}
+        <div style={{ flex: 1, fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
+          {event.title}
         </div>
-        {amount && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 12 }}>Valor:</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{amount}</span>
-          </div>
-        )}
+
+        {/* Info Direita: Responsável e/ou Status */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, opacity: 0.9 }}>
+           {/* Se for Consultoria/Apresentação, mostra ícone Online/Presencial */}
+           {(event.type === 'consultoria' || event.type === 'apresentacao') && (
+             <div style={{ display: 'flex', alignItems: 'center' }}>
+               {event.isOnline ? <Video size={12} /> : <MapPin size={12} />}
+             </div>
+           )}
+           
+           {/* Nome curto do responsável */}
+           <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.8 }}>{shortWho}</span>
+        </div>
       </div>
+
+      {/* TOOLTIP COMPLETO */}
+      {showTooltip && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          left: 0,
+          zIndex: 1000,
+          background: '#1e293b',
+          color: '#f8fafc',
+          padding: '10px 14px',
+          borderRadius: '8px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+          width: 'max-content',
+          minWidth: '200px',
+          maxWidth: '280px',
+          fontSize: '13px',
+          pointerEvents: 'none',
+          border: '1px solid #334155'
+        }}>
+          {/* Cabeçalho do Tooltip */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: '1px solid #334155', paddingBottom: 6 }}>
+            {icons[event.type]}
+            <span style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{event.title}</span>
+          </div>
+          
+          {/* Corpo do Tooltip */}
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Clock size={14} className="text-slate-400" />
+              <span style={{ color: '#e2e8f0' }}>{range}</span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <UserCheck size={14} className="text-slate-400" />
+              <span style={{ color: '#e2e8f0' }}>{who}</span>
+            </div>
+
+            {amountFormatted && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#4ade80' }}>$</span>
+                <span style={{ fontWeight: 600, color: '#4ade80' }}>{amountFormatted}</span>
+              </div>
+            )}
+
+            {(event.type === 'consultoria' || event.type === 'apresentacao') && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {event.isOnline ? (
+                  <>
+                    <Video size={14} className="text-blue-400" />
+                    <span style={{ color: '#60a5fa', fontWeight: 500 }}>Reunião Online</span>
+                  </>
+                ) : (
+                  <>
+                    <MapPin size={14} className="text-amber-400" />
+                    <span style={{ color: '#fbbf24', fontWeight: 500 }}>Reunião Presencial</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

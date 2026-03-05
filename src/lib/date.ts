@@ -52,6 +52,18 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         : null
     )
     if (consult) {
+      // Verifica o campo "tipo-de-atendimento-" (específico para consultoria)
+      const typeKey = 'tipo-de-atendimento-'
+      const typeValue = it.customFields[typeKey]
+      
+      const checkOnline = (val: any) => {
+        const str = Array.isArray(val) ? val[0] : (typeof val === 'string' ? val : '')
+        // Normaliza para lidar com "On-line", "Online", etc.
+        return str && str.toLowerCase().replace('-', '').includes('online')
+      }
+
+      const isOnline = checkOnline(typeValue)
+
       events.push({
         id: `${it.id}-consult`,
         type: 'consultoria',
@@ -61,7 +73,8 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         responsibleUserId: base.responsibleUserId,
         panelId: base.panelId,
         cardKey: base.cardKey,
-        monetaryAmount: base.monetaryAmount
+        monetaryAmount: base.monetaryAmount,
+        isOnline
       })
     }
     const apresent = parseDate(
@@ -70,6 +83,18 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         : null
     )
     if (apresent) {
+      // Verifica o campo "tipo-de-atendimento--1" (específico para apresentação)
+      const typeKey = 'tipo-de-atendimento--1'
+      const typeValue = it.customFields[typeKey]
+      
+      const checkOnline = (val: any) => {
+        const str = Array.isArray(val) ? val[0] : (typeof val === 'string' ? val : '')
+        // Normaliza para lidar com "On-line", "Online", etc.
+        return str && str.toLowerCase().replace('-', '').includes('online')
+      }
+
+      const isOnline = checkOnline(typeValue)
+
       events.push({
         id: `${it.id}-apresent`,
         type: 'apresentacao',
@@ -79,7 +104,8 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
         responsibleUserId: base.responsibleUserId,
         panelId: base.panelId,
         cardKey: base.cardKey,
-        monetaryAmount: base.monetaryAmount
+        monetaryAmount: base.monetaryAmount,
+        isOnline
       })
     }
   }
