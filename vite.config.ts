@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const auth = env.HELENA_API_TOKEN || env.VITE_API_TOKEN || ''
   return {
     plugins: [react()],
     resolve: {
@@ -13,11 +14,18 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        '/core': {
+          target: 'https://api.helena.run',
+          changeOrigin: true,
+          headers: {
+            Authorization: auth
+          }
+        },
         '/crm': {
           target: 'https://api.helena.run',
           changeOrigin: true,
           headers: {
-            Authorization: env.VITE_API_TOKEN || ''
+            Authorization: auth
           }
         }
       }

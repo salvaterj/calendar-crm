@@ -64,3 +64,26 @@ export async function fetchCards(panelId: string): Promise<CRMItem[]> {
   }
   return Object.values(items)
 }
+
+export async function fetchAgents(): Promise<Array<{ userId?: string; name: string; hasTasks?: boolean }>> {
+  const res = await axios.get('/core/v1/agent')
+  const data = res.data
+  const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+
+  const out: Array<{ userId?: string; name: string; hasTasks?: boolean }> = []
+  for (const raw of list) {
+    const obj = raw as any
+    const name = String(obj?.name ?? obj?.displayName ?? obj?.fullName ?? '').trim()
+    if (!name) continue
+    const userId = obj?.userId != null ? String(obj.userId) : undefined
+    const hasTasks =
+      (Array.isArray(obj?.tasks) && obj.tasks.length > 0) ||
+      (Array.isArray(obj?.items) && obj.items.length > 0) ||
+      (Array.isArray(obj?.assignedTasks) && obj.assignedTasks.length > 0) ||
+      (typeof obj?.taskCount === 'number' ? obj.taskCount > 0 : undefined) ||
+      (typeof obj?.assignedCount === 'number' ? obj.assignedCount > 0 : undefined) ||
+      (typeof obj?.totalTasks === 'number' ? obj.totalTasks > 0 : undefined)
+    out.push({ userId, name, hasTasks })
+  }
+  return out
+}

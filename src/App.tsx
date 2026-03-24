@@ -3,6 +3,7 @@ import { CalendarView } from './components/CalendarView'
 import { fetchCards, fetchPanels } from './api/crm'
 import { CRMItem, CalendarEvent } from './types/crm'
 import { toCalendarEvents } from './lib/date'
+import { Calendar as CalendarIcon } from 'lucide-react'
 
 export default function App() {
   const [items, setItems] = useState<CRMItem[]>([])
@@ -59,13 +60,48 @@ export default function App() {
   if (error) return <div className="page error" style={{ alignItems: 'center', justifyContent: 'center' }}>Erro: {error}</div>
 
   return (
-    <div className="page">
-      <div className="header">
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 24 }}>📅</span>
-          Calendário CRM
-        </h1>
-        <div style={{ fontSize: 14, color: '#64748b' }}>{events.length} eventos carregados</div>
+    <div className="page" style={{ background: '#f8fafc', minHeight: '100vh' }}>
+      <div className="header" style={{ 
+        background: '#fff', 
+        borderBottom: '1px solid #e2e8f0', 
+        padding: '16px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ 
+            background: '#eff6ff', 
+            padding: '8px', 
+            borderRadius: '8px',
+            color: '#3b82f6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <CalendarIcon size={20} strokeWidth={2.5} />
+          </div>
+          <h1 style={{ 
+            fontSize: '20px', 
+            fontWeight: 700, 
+            color: '#0f172a',
+            margin: 0,
+            letterSpacing: '-0.01em'
+          }}>
+            Calendário CRM
+          </h1>
+        </div>
+        <div style={{ 
+          fontSize: '13px', 
+          fontWeight: 500,
+          color: '#64748b',
+          background: '#f1f5f9',
+          padding: '6px 12px',
+          borderRadius: '20px'
+        }}>
+          {events.length} eventos carregados
+        </div>
       </div>
       <CalendarView events={events} onStatsChange={(s) => setStats(s)} />
     </div>
