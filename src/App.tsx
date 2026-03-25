@@ -10,6 +10,7 @@ export default function App() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ total: number; done: number; lastPanelId?: string }>({ total: 0, done: 0 })
   const [stats, setStats] = useState<{ consultoria: number; apresentacao: number; validade: number; total: number }>({
     consultoria: 0,
     apresentacao: 0,
@@ -18,46 +19,51 @@ export default function App() {
   })
 
   useEffect(() => {
+    let active = true
     const load = async () => {
       setLoading(true)
+      setError(null)
       try {
-        // 1. Painel principal (Gabi Planejados / Vendas / etc - assumindo que é este ID)
         const mainPanelId = 'a04146a8-6cf1-4f88-8f97-d926292ec510'
-        
-        // 2. Buscar todos os painéis para encontrar os de USER
         const allPanels = await fetchPanels()
-        
-        // 3. Filtrar painéis de escopo USER
         const userPanelIds = allPanels
           .filter(p => p.scope === 'USER')
           .map(p => p.id)
-          
-        // 4. Lista única de IDs para buscar
-        const idsToFetch = Array.from(new Set([mainPanelId, ...userPanelIds]))
-        
-        console.log('Buscando cards dos painéis:', idsToFetch)
 
-        // 5. Buscar cards de todos os painéis em paralelo
-        const results = await Promise.all(idsToFetch.map(id => fetchCards(id)))
-        
-        // 6. Combinar todos os itens
-        const allItems = results.flat()
-        
-        setItems(allItems)
-        setEvents(toCalendarEvents(allItems))
+        const idsToFetch = Array.from(new Set([mainPanelId, ...userPanelIds]))
+        if (!active) return
+        setProgress({ total: idsToFetch.length, done: 0 })
+
+        const itemsById: Record<string, CRMItem> = {}
+        for (const panelId of idsToFetch) {
+          if (!active) return
+          setProgress(prev => ({ ...prev, lastPanelId: panelId }))
+          const batch = await fetchCards(panelId)
+          if (!active) return
+          for (const it of batch) itemsById[it.id] = it
+          const allItems = Object.values(itemsById)
+          setItems(allItems)
+          setEvents(toCalendarEvents(allItems))
+          setProgress(prev => ({ ...prev, done: Math.min(prev.total, prev.done + 1) }))
+        }
       } catch (e) {
-        console.error(e)
+        if (!active) return
         setError(e instanceof Error ? e.message : String(e))
       } finally {
+        if (!active) return
         setLoading(false)
       }
     }
     
     load()
+    return () => {
+      active = false
+    }
   }, [])
 
-  if (loading) return <div className="page" style={{ alignItems: 'center', justifyContent: 'center' }}>Carregando...</div>
   if (error) return <div className="page error" style={{ alignItems: 'center', justifyContent: 'center' }}>Erro: {error}</div>
+
+  const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
 
   return (
     <div className="page" style={{ background: '#f8fafc', minHeight: '100vh' }}>
@@ -92,17 +98,29 @@ export default function App() {
             Calendário CRM
           </h1>
         </div>
-        <div style={{ 
-          fontSize: '13px', 
-          fontWeight: 500,
-          color: '#64748b',
-          background: '#f1f5f9',
-          padding: '6px 12px',
-          borderRadius: '20px'
-        }}>
-          {events.length} eventos carregados
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {loading && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>
+              Carregando {progress.done}/{progress.total} painéis ({progressPct}%)
+            </div>
+          )}
+          <div style={{ 
+            fontSize: '13px', 
+            fontWeight: 500,
+            color: '#64748b',
+            background: '#f1f5f9',
+            padding: '6px 12px',
+            borderRadius: '20px'
+          }}>
+            {events.length} eventos
+          </div>
         </div>
       </div>
+      {loading && (
+        <div style={{ height: 3, background: '#e2e8f0' }}>
+          <div style={{ height: 3, width: `${progressPct}%`, background: '#3b82f6', transition: 'width 200ms ease' }} />
+        </div>
+      )}
       <CalendarView events={events} onStatsChange={(s) => setStats(s)} />
     </div>
   )
