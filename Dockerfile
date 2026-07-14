@@ -7,6 +7,10 @@ WORKDIR /app
 ARG VITE_API_TOKEN
 ENV VITE_API_TOKEN=$VITE_API_TOKEN
 
+# Argumento de build para a URL pública da meetings-api
+ARG VITE_MEETINGS_API_URL
+ENV VITE_MEETINGS_API_URL=$VITE_MEETINGS_API_URL
+
 # Copiar arquivos de dependência
 COPY package.json package-lock.json ./
 
