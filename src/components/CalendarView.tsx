@@ -1,31 +1,25 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, startOfWeek, addDays, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter, CheckSquare, Video, MapPin } from 'lucide-react'
+import { Clock, UserCheck, MonitorPlay, Calendar as CalendarIcon, Filter, CheckSquare, Video, MapPin, Users } from 'lucide-react'
 import { DayPicker, type DayButtonProps } from 'react-day-picker'
 import { fetchAgents } from '@/api/crm'
-import { CalendarEvent, EventType } from '@/types/crm'
-import { resolveUserName, USER_MAP } from '@/userMap'
+import { CalendarEvent, EventType, Meeting } from '@/types/crm'
+import { resolveUserName, USER_MAP, ALLOWED_TEAM_MEMBERS, normalizeName, buildIdByFirstNameMap } from '@/userMap'
+import { MeetingsPanel } from './MeetingsPanel'
 
 const EVENT_COLORS: Record<string, string> = {
   dueDate: '#f97316',
   consultoria: '#22c55e',
   apresentacao: '#3b82f6',
-  tarefa: '#a855f7'
+  tarefa: '#a855f7',
+  reuniao: '#ec4899'
 }
 
 const WEEKDAY_SHORT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'] as const
 
 function shortWeekday(date: Date) {
   return WEEKDAY_SHORT[date.getDay()]
-}
-
-function normalizeName(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
 }
 
 function withAlpha(hex: string, alphaHex: string) {
@@ -56,10 +50,13 @@ function TooltipOverlay({ event, rect }: { event: CalendarEvent, rect: DOMRect }
     dueDate: <Clock size={13} />,
     consultoria: <UserCheck size={13} />,
     apresentacao: <MonitorPlay size={13} />,
-    tarefa: <CheckSquare size={13} />
+    tarefa: <CheckSquare size={13} />,
+    reuniao: <Users size={13} />
   }
   const range = `${format(event.start, 'HH:mm')} - ${format(event.end, 'HH:mm')}`
-  const who = resolveUserName(event.responsibleUserId)
+  const who = event.type === 'reuniao'
+    ? (event.participantIds || []).map(resolveUserName).join(', ') || 'Sem participantes'
+    : resolveUserName(event.responsibleUserId)
   
   const amountFormatted = event.monetaryAmount 
     ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(event.monetaryAmount)
@@ -111,7 +108,7 @@ function TooltipOverlay({ event, rect }: { event: CalendarEvent, rect: DOMRect }
           </div>
         )}
 
-        {(event.type === 'consultoria' || event.type === 'apresentacao') && (
+        {(event.type === 'consultoria' || event.type === 'apresentacao' || event.type === 'reuniao') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {event.isOnline ? (
               <>
@@ -136,7 +133,8 @@ function EventCardContent({ event, onHover }: { event: CalendarEvent, onHover: (
     dueDate: <Clock size={13} />,
     consultoria: <UserCheck size={13} />,
     apresentacao: <MonitorPlay size={13} />,
-    tarefa: <CheckSquare size={13} />
+    tarefa: <CheckSquare size={13} />,
+    reuniao: <Users size={13} />
   }
 
   return (
@@ -158,7 +156,7 @@ function EventCardContent({ event, onHover }: { event: CalendarEvent, onHover: (
             {event.title}
           </div>
         </div>
-        {(event.type === 'consultoria' || event.type === 'apresentacao') && (
+        {(event.type === 'consultoria' || event.type === 'apresentacao' || event.type === 'reuniao') && (
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', color: '#64748b' }}>
             {event.isOnline ? <Video size={14} /> : <MapPin size={14} />}
           </div>
@@ -170,9 +168,19 @@ function EventCardContent({ event, onHover }: { event: CalendarEvent, onHover: (
 
 type DateRange = 'week' | 'month'
 
- type Stats = { consultoria: number; apresentacao: number; validade: number; tarefa: number; total: number }
+ type Stats = { consultoria: number; apresentacao: number; validade: number; tarefa: number; reuniao: number; total: number }
 
-export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[]; onStatsChange?: (s: Stats) => void }) {
+export function CalendarView({
+  events,
+  onStatsChange,
+  meetings,
+  onMeetingsChanged
+}: {
+  events: CalendarEvent[]
+  onStatsChange?: (s: Stats) => void
+  meetings: Meeting[]
+  onMeetingsChanged: () => void
+}) {
   const [date, setDate] = useState(new Date())
   const [selectedDayKeys, setSelectedDayKeys] = useState<string[]>([])
   const [hoveredEvent, setHoveredEvent] = useState<{ event: CalendarEvent, rect: DOMRect } | null>(null)
@@ -182,7 +190,8 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
     dueDate: true,
     consultoria: true,
     apresentacao: true,
-    tarefa: true
+    tarefa: true,
+    reuniao: true
   })
   const [modalUrl, setModalUrl] = useState<string | null>(null)
 
@@ -215,14 +224,10 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   }, [])
 
   const responsibleOptions = useMemo(() => {
-    const allowed = ['Julia', 'Fernanda', 'Mirian', 'Beatriz', 'Mariana']
+    const allowed = ALLOWED_TEAM_MEMBERS
     const allowedSet = new Set(allowed.map(normalizeName))
     const allowedLabelByKey = new Map<string, string>(allowed.map((n) => [normalizeName(n), n]))
-    const idByFirstName = new Map<string, string>()
-    for (const [id, name] of Object.entries(USER_MAP)) {
-      const first = name.split(' -')[0].trim()
-      if (first) idByFirstName.set(normalizeName(first), id)
-    }
+    const idByFirstName = buildIdByFirstNameMap()
 
     const idsInEvents = new Set(events.map(e => e.responsibleUserId).filter(Boolean))
 
@@ -266,7 +271,10 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   const typeFiltered = useMemo(() => {
     return events.filter(e => {
       const typeMatch = selectedTypes[e.type]
-      const responsibleMatch = !selectedResponsible || e.responsibleUserId === selectedResponsible
+      const responsibleMatch =
+        !selectedResponsible ||
+        e.responsibleUserId === selectedResponsible ||
+        (e.type === 'reuniao' && !!e.participantIds?.includes(selectedResponsible))
       return typeMatch && responsibleMatch
     })
   }, [events, selectedTypes, selectedResponsible])
@@ -365,8 +373,9 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
      const apresentacao = displayedEvents.filter(e => e.type === 'apresentacao').length
      const validade = displayedEvents.filter(e => e.type === 'dueDate').length
      const tarefa = displayedEvents.filter(e => e.type === 'tarefa').length
+     const reuniao = displayedEvents.filter(e => e.type === 'reuniao').length
      const total = displayedEvents.length
-     return { consultoria, apresentacao, validade, tarefa, total }
+     return { consultoria, apresentacao, validade, tarefa, reuniao, total }
    }, [displayedEvents])
  
    useEffect(() => {
@@ -374,7 +383,7 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
   }, [stats, onStatsChange])
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="custom-toolbar" style={{ 
         display: 'flex', 
         gap: 20, 
@@ -437,6 +446,10 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
               <input type="checkbox" checked={selectedTypes.tarefa} onChange={() => toggleType('tarefa')} style={{ accentColor: '#9333ea' }} />
               Tarefa
             </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#db2777', cursor: 'pointer' }}>
+              <input type="checkbox" checked={selectedTypes.reuniao} onChange={() => toggleType('reuniao')} style={{ accentColor: '#db2777' }} />
+              Reunião
+            </label>
           </div>
         </div>
 
@@ -456,6 +469,9 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
             </div>
             <div style={{ background: '#f3e8ff', color: '#9333ea', padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
               {stats.tarefa} <span style={{ fontWeight: 500 }}>Tarefas</span>
+            </div>
+            <div style={{ background: '#fce7f3', color: '#db2777', padding: '4px 10px', borderRadius: 20, fontWeight: 600 }}>
+              {stats.reuniao} <span style={{ fontWeight: 500 }}>Reuniões</span>
             </div>
           </div>
         </div>
@@ -524,6 +540,8 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
                 components={{ DayButton: MonthDayButton }}
               />
             </div>
+
+            <MeetingsPanel meetings={meetings} onChanged={onMeetingsChanged} />
           </div>
 
           <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 12, overflow: 'auto' }}>
@@ -550,8 +568,8 @@ export function CalendarView({ events, onStatsChange }: { events: CalendarEvent[
                         {d.events.map((e) => (
                           <div
                             key={e.id}
-                            style={{ ...eventStyleGetter(e).style, height: 'auto' }}
-                            onClick={() => openEvent(e)}
+                            style={{ ...eventStyleGetter(e).style, height: 'auto', cursor: e.type === 'reuniao' ? 'default' : 'pointer' }}
+                            onClick={() => { if (e.type !== 'reuniao') openEvent(e) }}
                           >
                             <EventCardContent event={e} onHover={handleHover} />
                           </div>

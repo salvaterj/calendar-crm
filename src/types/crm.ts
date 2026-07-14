@@ -28,7 +28,7 @@ export type Panel = {
   description?: string | null
 }
 
-export type EventType = 'dueDate' | 'consultoria' | 'apresentacao' | 'tarefa'
+export type EventType = 'dueDate' | 'consultoria' | 'apresentacao' | 'tarefa' | 'reuniao'
 
 export type CalendarEvent = {
   id: string
@@ -41,4 +41,25 @@ export type CalendarEvent = {
   cardKey?: string | null
   monetaryAmount?: number | null
   isOnline?: boolean
+  participantIds?: string[]
+}
+
+export type Meeting = {
+  id: string
+  title: string
+  startsAt: string
+  endsAt: string
+  participantIds: string[]
+  isOnline: boolean
+  location?: string | null
+  createdAt: string
+}
+
+export type CreateMeetingPayload = {
+  title: string
+  startsAt: string
+  endsAt: string
+  participantIds: string[]
+  isOnline: boolean
+  location?: string | null
 }

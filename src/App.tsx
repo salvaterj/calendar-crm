@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CalendarView } from './components/CalendarView'
 import { fetchCards, fetchPanels } from './api/crm'
-import { CRMItem, CalendarEvent } from './types/crm'
-import { toCalendarEvents } from './lib/date'
+import { fetchMeetings } from './api/meetings'
+import { CRMItem, CalendarEvent, Meeting } from './types/crm'
+import { toCalendarEvents, toMeetingEvents } from './lib/date'
 import { Calendar as CalendarIcon } from 'lucide-react'
 
 export default function App() {
   const [items, setItems] = useState<CRMItem[]>([])
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [meetingsError, setMeetingsError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ total: number; done: number; lastPanelId?: string }>({ total: 0, done: 0 })
@@ -61,6 +64,19 @@ export default function App() {
     }
   }, [])
 
+  const loadMeetings = () => {
+    fetchMeetings()
+      .then((list) => setMeetings(list))
+      .catch((e) => setMeetingsError(e instanceof Error ? e.message : String(e)))
+  }
+
+  useEffect(() => {
+    loadMeetings()
+  }, [])
+
+  const meetingEvents = useMemo(() => toMeetingEvents(meetings), [meetings])
+  const allEvents = useMemo(() => [...events, ...meetingEvents], [events, meetingEvents])
+
   if (error) return <div className="page error" style={{ alignItems: 'center', justifyContent: 'center' }}>Erro: {error}</div>
 
   const progressPct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
@@ -104,15 +120,15 @@ export default function App() {
               Carregando {progress.done}/{progress.total} painéis ({progressPct}%)
             </div>
           )}
-          <div style={{ 
-            fontSize: '13px', 
+          <div style={{
+            fontSize: '13px',
             fontWeight: 500,
             color: '#64748b',
             background: '#f1f5f9',
             padding: '6px 12px',
             borderRadius: '20px'
           }}>
-            {events.length} eventos
+            {allEvents.length} eventos
           </div>
         </div>
       </div>
@@ -121,7 +137,12 @@ export default function App() {
           <div style={{ height: 3, width: `${progressPct}%`, background: '#3b82f6', transition: 'width 200ms ease' }} />
         </div>
       )}
-      <CalendarView events={events} onStatsChange={(s) => setStats(s)} />
+      {meetingsError && (
+        <div style={{ margin: '8px 16px 0', color: '#dc2626', fontSize: 13 }}>
+          Erro ao carregar reuniões: {meetingsError}
+        </div>
+      )}
+      <CalendarView events={allEvents} onStatsChange={(s) => setStats(s)} meetings={meetings} onMeetingsChanged={loadMeetings} />
     </div>
   )
 }
