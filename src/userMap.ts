@@ -14,3 +14,33 @@ export function resolveUserName(id?: string | null) {
   if (!id) return 'Não definido'
   return USER_MAP[id] || id
 }
+
+export const ALLOWED_TEAM_MEMBERS: readonly string[] = ['Julia', 'Fernanda', 'Mirian', 'Beatriz', 'Mariana']
+
+export function normalizeName(value: string) {
+  const decomposed = value.trim().toLowerCase().normalize('NFD')
+  let result = ''
+  for (const ch of decomposed) {
+    if (ch.charCodeAt(0) < 128) result += ch
+  }
+  return result
+}
+
+export function buildIdByFirstNameMap() {
+  const idByFirstName = new Map<string, string>()
+  for (const [id, name] of Object.entries(USER_MAP)) {
+    const first = name.split(' -')[0].trim()
+    if (first) idByFirstName.set(normalizeName(first), id)
+  }
+  return idByFirstName
+}
+
+export function getTeamMemberOptions(names: readonly string[] = ALLOWED_TEAM_MEMBERS) {
+  const idByFirstName = buildIdByFirstNameMap()
+  const options: Array<{ id: string; label: string }> = []
+  for (const name of names) {
+    const id = idByFirstName.get(normalizeName(name))
+    if (id) options.push({ id, label: name })
+  }
+  return options
+}

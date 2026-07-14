@@ -1,5 +1,5 @@
 import { addMinutes, parseISO } from 'date-fns'
-import { CalendarEvent, CRMItem, EventType } from '@/types/crm'
+import { CalendarEvent, CRMItem, EventType, Meeting } from '@/types/crm'
 
 function parseDate(value?: string | null) {
   if (!value) return null
@@ -110,4 +110,17 @@ export function toCalendarEvents(items: CRMItem[]): CalendarEvent[] {
     }
   }
   return events
+}
+
+export function toMeetingEvents(meetings: Meeting[]): CalendarEvent[] {
+  return meetings.map((m) => ({
+    id: `meeting-${m.id}`,
+    type: 'reuniao',
+    title: m.title,
+    start: parseISO(m.startsAt),
+    end: parseISO(m.endsAt),
+    responsibleUserId: null,
+    isOnline: m.isOnline,
+    participantIds: m.participantIds
+  }))
 }
