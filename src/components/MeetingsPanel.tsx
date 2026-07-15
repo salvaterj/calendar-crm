@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { format, parseISO, addMinutes } from 'date-fns'
 import { ptBR } from 'date-fns/locale/pt-BR'
-import { CalendarPlus, Users, Video, MapPin, Trash2 } from 'lucide-react'
-import { createMeeting, deleteMeeting } from '@/api/meetings'
+import { CalendarPlus, Users, Video, MapPin, Trash2, AlertCircle } from 'lucide-react'
+import { createMeeting, deleteMeeting, fetchMeetings } from '@/api/meetings'
 import { Meeting } from '@/types/crm'
 import { getTeamMemberOptions, resolveUserName } from '@/userMap'
 
@@ -29,6 +29,7 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
   const [location, setLocation] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const toggleParticipant = (id: string) => {
     setParticipantIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
@@ -77,11 +78,19 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Cancelar esta reunião?')) return
+    setDeletingId(id)
+    setError(null)
     try {
       await deleteMeeting(id)
+      const refreshed = await fetchMeetings()
+      if (refreshed.some((m) => m.id === id)) {
+        throw new Error('O servidor não confirmou a exclusão. Tente novamente em instantes.')
+      }
       onChanged()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -91,6 +100,28 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
         <CalendarPlus size={16} color="#db2777" />
         <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Agendar Reunião</span>
       </div>
+
+      {error && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 8,
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 8,
+            padding: '8px 10px',
+            marginBottom: 10,
+            color: '#b91c1c',
+            fontSize: 12,
+            fontWeight: 600
+          }}
+        >
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <input
@@ -154,8 +185,6 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
           </div>
         </div>
 
-        {error && <div style={{ color: '#dc2626', fontSize: 12 }}>{error}</div>}
-
         <button
           type="button"
           disabled={!canSubmit}
@@ -201,8 +230,16 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
                   <button
                     type="button"
                     onClick={() => handleDelete(m.id)}
-                    title="Cancelar reunião"
-                    style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', padding: 4, flexShrink: 0 }}
+                    disabled={deletingId === m.id}
+                    title={deletingId === m.id ? 'Excluindo...' : 'Cancelar reunião'}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: deletingId === m.id ? '#94a3b8' : '#dc2626',
+                      cursor: deletingId === m.id ? 'wait' : 'pointer',
+                      padding: 4,
+                      flexShrink: 0
+                    }}
                   >
                     <Trash2 size={16} />
                   </button>
