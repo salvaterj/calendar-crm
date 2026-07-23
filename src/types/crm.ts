@@ -63,3 +63,5 @@ export type CreateMeetingPayload = {
   isOnline: boolean
   location?: string | null
 }
+
+export type UpdateMeetingPayload = CreateMeetingPayload
