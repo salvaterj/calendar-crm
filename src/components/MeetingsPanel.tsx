@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
-import { format, parseISO, addMinutes } from 'date-fns'
-import { ptBR } from 'date-fns/locale/pt-BR'
-import { CalendarPlus, Users, Video, MapPin, Trash2, AlertCircle } from 'lucide-react'
-import { createMeeting, deleteMeeting, fetchMeetings } from '@/api/meetings'
-import { Meeting } from '@/types/crm'
-import { getTeamMemberOptions, resolveUserName } from '@/userMap'
+import { format, addMinutes } from 'date-fns'
+import { CalendarPlus, Users, AlertCircle } from 'lucide-react'
+import { createMeeting } from '@/api/meetings'
+import { getTeamMemberOptions } from '@/userMap'
 
 const DURATION_OPTIONS = [30, 60, 90] as const
 
@@ -16,7 +14,7 @@ function toTimeInputValue(date: Date) {
   return format(date, 'HH:mm')
 }
 
-export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; onChanged: () => void }) {
+export function MeetingsPanel({ onChanged }: { onChanged: () => void }) {
   const teamOptions = useMemo(() => getTeamMemberOptions(), [])
 
   const now = new Date()
@@ -29,21 +27,12 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
   const [location, setLocation] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const toggleParticipant = (id: string) => {
     setParticipantIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
   }
 
   const canSubmit = title.trim().length > 0 && participantIds.length > 0 && !submitting
-
-  const upcomingMeetings = useMemo(() => {
-    const nowTs = Date.now()
-    return meetings
-      .filter((m) => parseISO(m.endsAt).getTime() >= nowTs)
-      .slice()
-      .sort((a, b) => parseISO(a.startsAt).getTime() - parseISO(b.startsAt).getTime())
-  }, [meetings])
 
   const resetForm = () => {
     setTitle('')
@@ -73,24 +62,6 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Cancelar esta reunião?')) return
-    setDeletingId(id)
-    setError(null)
-    try {
-      await deleteMeeting(id)
-      const refreshed = await fetchMeetings()
-      if (refreshed.some((m) => m.id === id)) {
-        throw new Error('O servidor não confirmou a exclusão. Tente novamente em instantes.')
-      }
-      onChanged()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setDeletingId(null)
     }
   }
 
@@ -203,51 +174,6 @@ export function MeetingsPanel({ meetings, onChanged }: { meetings: Meeting[]; on
         >
           {submitting ? 'Agendando...' : 'Agendar reunião'}
         </button>
-      </div>
-
-      <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 8 }}>Próximas reuniões</div>
-        {upcomingMeetings.length === 0 ? (
-          <div style={{ color: '#64748b', fontSize: 12 }}>Nenhuma reunião agendada.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
-            {upcomingMeetings.map((m) => (
-              <div key={m.id} style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, fontSize: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{m.title}</div>
-                    <div style={{ color: '#64748b' }}>
-                      {format(parseISO(m.startsAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                    </div>
-                    <div style={{ color: '#64748b' }}>
-                      {m.participantIds.map(resolveUserName).join(', ')}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: m.isOnline ? '#2563eb' : '#b45309', marginTop: 4 }}>
-                      {m.isOnline ? <Video size={12} /> : <MapPin size={12} />}
-                      {m.isOnline ? 'Online' : 'Presencial'}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(m.id)}
-                    disabled={deletingId === m.id}
-                    title={deletingId === m.id ? 'Excluindo...' : 'Cancelar reunião'}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: deletingId === m.id ? '#94a3b8' : '#dc2626',
-                      cursor: deletingId === m.id ? 'wait' : 'pointer',
-                      padding: 4,
-                      flexShrink: 0
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

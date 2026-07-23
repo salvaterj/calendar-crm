@@ -54,6 +54,34 @@ meetingsRouter.post('/', async (req, res, next) => {
   }
 })
 
+meetingsRouter.patch('/:id', async (req, res, next) => {
+  try {
+    const { title, startsAt, endsAt, participantIds, isOnline, location } = req.body || {}
+
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ error: 'title é obrigatório' })
+    }
+    const start = new Date(startsAt)
+    const end = new Date(endsAt)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return res.status(400).json({ error: 'startsAt/endsAt inválidos (endsAt deve ser depois de startsAt)' })
+    }
+    if (!Array.isArray(participantIds) || participantIds.length === 0 || !participantIds.every((p) => typeof p === 'string')) {
+      return res.status(400).json({ error: 'participantIds deve ser uma lista não vazia de strings' })
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE meetings SET title=$1, starts_at=$2, ends_at=$3, participant_ids=$4, is_online=$5, location=$6
+       WHERE id=$7 RETURNING *`,
+      [title.trim(), start, end, participantIds, !!isOnline, location || null, req.params.id]
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'not found' })
+    res.json(toApi(rows[0]))
+  } catch (err) {
+    next(err)
+  }
+})
+
 meetingsRouter.delete('/:id', async (req, res, next) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM meetings WHERE id = $1', [req.params.id])

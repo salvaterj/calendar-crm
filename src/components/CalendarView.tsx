@@ -7,6 +7,7 @@ import { fetchAgents } from '@/api/crm'
 import { CalendarEvent, EventType, Meeting } from '@/types/crm'
 import { resolveUserName, USER_MAP, ALLOWED_TEAM_MEMBERS, normalizeName, buildIdByFirstNameMap } from '@/userMap'
 import { MeetingsPanel } from './MeetingsPanel'
+import { MeetingEditModal } from './MeetingEditModal'
 
 const EVENT_COLORS: Record<string, string> = {
   dueDate: '#f97316',
@@ -194,6 +195,7 @@ export function CalendarView({
     reuniao: true
   })
   const [modalUrl, setModalUrl] = useState<string | null>(null)
+  const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null)
 
   const handleHover = (event: CalendarEvent | null, rect?: DOMRect) => {
     if (event && rect) {
@@ -307,6 +309,11 @@ export function CalendarView({
         : 'https://crm.octanis.com.br/panels/a04146a8-6cf1-4f88-8f97-d926292ec510/card/COME-36'
     setModalUrl(url)
   }
+
+  const editingMeeting = useMemo(
+    () => (editingMeetingId ? meetings.find((m) => m.id === editingMeetingId) ?? null : null),
+    [editingMeetingId, meetings]
+  )
 
   const weekDays = useMemo(() => {
     const start = startOfWeek(date, { weekStartsOn: 0 })
@@ -541,7 +548,7 @@ export function CalendarView({
               />
             </div>
 
-            <MeetingsPanel meetings={meetings} onChanged={onMeetingsChanged} />
+            <MeetingsPanel onChanged={onMeetingsChanged} />
           </div>
 
           <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 12, overflow: 'auto' }}>
@@ -568,8 +575,8 @@ export function CalendarView({
                         {d.events.map((e) => (
                           <div
                             key={e.id}
-                            style={{ ...eventStyleGetter(e).style, height: 'auto', cursor: e.type === 'reuniao' ? 'default' : 'pointer' }}
-                            onClick={() => { if (e.type !== 'reuniao') openEvent(e) }}
+                            style={{ ...eventStyleGetter(e).style, height: 'auto' }}
+                            onClick={() => { if (e.type === 'reuniao') setEditingMeetingId(e.id.replace(/^meeting-/, '')); else openEvent(e) }}
                           >
                             <EventCardContent event={e} onHover={handleHover} />
                           </div>
@@ -595,6 +602,13 @@ export function CalendarView({
             <iframe src={modalUrl} style={{ width: '100%', height: 'calc(100% - 40px)', border: 'none', background: '#fff' }} />
           </div>
         </div>
+      )}
+      {editingMeeting && (
+        <MeetingEditModal
+          meeting={editingMeeting}
+          onClose={() => setEditingMeetingId(null)}
+          onChanged={onMeetingsChanged}
+        />
       )}
     </div>
   )
