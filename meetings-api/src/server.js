@@ -5,7 +5,11 @@ import { meetingsRouter } from './routes/meetings.js'
 
 const app = express()
 
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }))
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || '*').split(',').map((origin) => origin.trim())
+
+app.use(cors({
+  origin: allowedOrigins.includes('*') ? '*' : allowedOrigins
+}))
 app.use(express.json())
 
 app.get('/health', (_req, res) => res.json({ ok: true }))
