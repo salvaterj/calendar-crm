@@ -15,7 +15,7 @@ export function resolveUserName(id?: string | null) {
   return USER_MAP[id] || id
 }
 
-export const ALLOWED_TEAM_MEMBERS: readonly string[] = ['Julia', 'Fernanda', 'Mirian', 'Beatriz', 'Mariana']
+export const ALLOWED_TEAM_MEMBERS: readonly string[] = ['Julia', 'Fernanda', 'Mirian', 'Beatriz', 'Mariana', 'Déborah']
 
 export function normalizeName(value: string) {
   const decomposed = value.trim().toLowerCase().normalize('NFD')
