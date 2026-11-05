@@ -6,6 +6,7 @@ export const USER_MAP: Record<string, string> = {
   '7f587771-3763-462f-9322-945d37ca6650': 'Fernanda - Consultora',
   '9f9dc3de-5e74-4f29-bb05-881a500d4f74': 'Déborah - Setor de Projetos',
   'a5e7b284-6760-45bd-968b-44b2e3a28f2f': 'Beatriz - Consultora',
+  'ba04413a-c726-45cc-92d7-dad1c97ca9ad': 'Jessica - Consultora',
   'bfc6d9d6-4021-4eb7-94f5-48b53838e35a': 'Gabriela',
   'f09e45cb-a88a-4850-9e89-c2f96aab0333': 'Karen - Gerente Gabi Planejados'
 }
@@ -15,7 +16,7 @@ export function resolveUserName(id?: string | null) {
   return USER_MAP[id] || id
 }
 
-export const ALLOWED_TEAM_MEMBERS: readonly string[] = ['Julia', 'Fernanda', 'Mirian', 'Beatriz', 'Mariana', 'Déborah']
+export const ALLOWED_TEAM_MEMBERS: readonly string[] = ['Julia', 'Fernanda', 'Mirian', 'Jessica', 'Mariana', 'Déborah']
 
 export function normalizeName(value: string) {
   const decomposed = value.trim().toLowerCase().normalize('NFD')

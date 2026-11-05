@@ -39,4 +39,4 @@
 - Usuários/agentes do CRM são mapeados manualmente em `src/userMap.ts` (USER_MAP) — novos consultores precisam ser adicionados ali manualmente.
 
 ## Contexto do Cliente
-- Gabi Planejados (móveis planejados) — usuárias mapeadas em `src/userMap.ts`: Mirian, Júlia, Mariana, Lívia, Fernanda, Déborah, Beatriz, Gabriela, Karen.
+- Gabi Planejados (móveis planejados) — usuárias mapeadas em `src/userMap.ts`: Mirian, Júlia, Mariana, Lívia, Fernanda, Déborah, Jessica, Gabriela, Karen. (Beatriz saiu — mantida só no USER_MAP para nome em cards antigos, fora da lista de permitidas.)
