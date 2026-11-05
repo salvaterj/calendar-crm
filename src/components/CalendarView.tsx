@@ -231,7 +231,9 @@ export function CalendarView({
     const allowedLabelByKey = new Map<string, string>(allowed.map((n) => [normalizeName(n), n]))
     const idByFirstName = buildIdByFirstNameMap()
 
-    const idsInEvents = new Set(events.map(e => e.responsibleUserId).filter(Boolean))
+    const idsInEvents = new Set(
+      events.flatMap(e => [e.responsibleUserId, ...(e.participantIds || [])]).filter(Boolean)
+    )
 
     const items: Array<{ id: string; label: string }> = []
     if (agentList && agentList.length > 0) {
